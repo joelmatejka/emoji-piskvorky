@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111019">
+  <meta name="description" content="Play five-in-a-row with a friend and choose your own emoji pieces.">
+  <title>Piškvorky — Emoji Five in a Row</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111019;
+      --surface: #191722;
+      --surface-raised: #211d2d;
+      --line: #323044;
+      --text: #f7f3ff;
+      --muted: #b1a8c3;
+      --quiet: #8e85a3;
+      --lime: #dbfa86;
+      --lilac: #c7a8ff;
+      --radius: 18px;
+      --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      min-width: 300px;
+      min-height: 100vh;
+      margin: 0;
+      background: radial-gradient(ellipse 850px 580px at 43% -10%, #282039 0%, transparent 74%), var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; color: inherit; }
+    button[disabled] { cursor: default; opacity: .45; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--lilac);
+      outline-offset: 3px;
+    }
+    button, h1, h2, h3, p { margin: 0; }
+    [hidden] { display: none !important; }
+    .icon {
+      width: 1.1em;
+      height: 1.1em;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 72px;
+      padding: 0 clamp(18px, 4vw, 66px);
+      border-bottom: 1px solid #312b40;
+      background: #14121dc4;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1rem;
+      font-weight: 720;
+      letter-spacing: -.025em;
+    }
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 35px;
+      height: 35px;
+      border-radius: 10px;
+      color: #231638;
+      background: var(--lilac);
+    }
+    .brand-icon .icon { width: 22px; height: 22px; stroke-width: 1.9; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #211e2c;
+      color: var(--text);
+      font-size: .875rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .button:hover:not([disabled]) { background: #343047; border-color: #615476; }
+    .button.primary {
+      color: #222819;
+      background: var(--lime);
+      border-color: var(--lime);
+    }
+    .button.primary:hover:not([disabled]) { background: #edffb4; border-color: #edffb4; }
+    main { width: min(1070px, calc(100% - 48px)); margin: 0 auto; padding: 38px 0 38px; }
+    .intro { margin: 0 0 24px; }
+    h1 {
+      font-size: clamp(3rem, 6vw, 4.75rem);
+      font-weight: 810;
+      letter-spacing: -.079em;
+      line-height: 1.02;
+    }
+    .intro p { margin-top: 10px; color: var(--muted); font-size: 1rem; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .board-panel { padding: 15px 16px 12px; }
+    .board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 43px;
+      margin-bottom: 14px;
+    }
+    .status { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .status-emoji {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--tint);
+      border-radius: 10px;
+      background: var(--soft);
+      font-size: 1.25rem;
+    }
+    .status strong { display: block; font-size: .96rem; line-height: 1.2; }
+    .status small { display: block; margin-top: 4px; color: var(--muted); font-size: .75rem; }
+    .board-actions { display: flex; gap: 7px; }
+    .coordinates {
+      display: grid;
+      grid-template-columns: 21px minmax(0, 1fr);
+      grid-template-rows: 19px auto;
+      max-width: 635px;
+      margin: 0 auto;
+    }
+    .columns, .rows { display: grid; color: var(--quiet); font-family: ui-monospace, monospace; font-size: .69rem; }
+    .columns { grid-column: 2; grid-template-columns: repeat(15, 1fr); }
+    .rows { grid-column: 1; grid-template-rows: repeat(15, 1fr); }
+    .columns span, .rows span { display: grid; place-items: center; }
+    .board {
+      display: grid;
+      grid-column: 2;
+      grid-template-rows: repeat(15, minmax(0, 1fr));
+      overflow: hidden;
+      aspect-ratio: 1;
+      border: 1px solid #4b405c;
+      border-radius: 9px;
+      background: #1d1928;
+      container-type: inline-size;
+    }
+    .board-row { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); min-height: 0; }
+    .cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      border-right: 1px solid #3b324b;
+      border-bottom: 1px solid #3b324b;
+      border-radius: 0;
+      background: transparent;
+      font-size: clamp(.75rem, 4.05cqw, 1.65rem);
+      line-height: 1;
+      touch-action: manipulation;
+    }
+    .board-row > :last-child .cell { border-right: 0; }
+    .board-row:last-child .cell { border-bottom: 0; }
+    .cell[data-star]::after {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #685579;
+      content: "";
+    }
+    .cell[data-owner]::after { content: none; }
+    .cell[data-owner] { background: var(--piece-wash); }
+    .cell[data-last] { box-shadow: inset 0 0 0 1px var(--tint); }
+    .cell[data-winning] { background: var(--soft); box-shadow: inset 0 0 0 2px var(--tint); }
+    .cell:focus-visible { z-index: 1; outline-offset: -3px; }
+    .cell[aria-disabled="true"] { cursor: default; }
+    @media (hover: hover) {
+      .cell:not([aria-disabled="true"]):hover { background: var(--soft); }
+      .cell:not([aria-disabled="true"]):hover .ghost { display: inline-block; opacity: .48; z-index: 1; }
+    }
+    .emoji.ghost { display: none; }
+    .board-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 12px 0 0 21px;
+      color: var(--quiet);
+      font-size: .75rem;
+    }
+    .sidebar { display: grid; gap: 15px; }
+    .players { padding: 17px; }
+    h2 { font-size: 1.05rem; font-weight: 730; letter-spacing: -.025em; }
+    .section-note { margin-top: 4px; color: var(--muted); font-size: .875rem; line-height: 1.45; }
+    .player {
+      padding: 12px;
+      border: 1px solid #3a3449;
+      border-radius: 13px;
+      background: #211d2b;
+    }
+    .player:first-of-type { margin-top: 15px; }
+    .player + .player { margin-top: 10px; }
+    [data-piece-color="lime"] { --tint: #dbfa86; --soft: #363e28; --piece-wash: #d4f78112; }
+    [data-piece-color="purple"] { --tint: #c7a8ff; --soft: #392d50; --piece-wash: #c7a8ff17; }
+    [data-piece-color="blue"] { --tint: #91c4ff; --soft: #233e60; --piece-wash: #6ca7ff40; }
+    [data-piece-color="teal"] { --tint: #7de6d1; --soft: #1d4a46; --piece-wash: #50c9ad40; }
+    [data-piece-color="amber"] { --tint: #ffcb7e; --soft: #503b28; --piece-wash: #efaa5050; }
+    [data-piece-color="rose"] { --tint: #ffadd9; --soft: #542943; --piece-wash: #f48bc24a; }
+    [data-piece-color="red"] { --tint: #ffa89b; --soft: #542d32; --piece-wash: #f273644a; }
+    [data-piece-color="slate"] { --tint: #c1cbdc; --soft: #394354; --piece-wash: #9baec74a; }
+    [data-piece-color="neutral"] { --tint: #c6bfd4; --soft: #332d40; }
+    [data-player="0"] { --player-accent: var(--lime); }
+    [data-player="1"] { --player-accent: var(--lilac); }
+    .player[data-active] { border-color: var(--player-accent); }
+    .player-head { display: flex; align-items: center; gap: 10px; }
+    .player-piece {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      flex: 0 0 auto;
+      border-radius: 10px;
+      background: var(--soft);
+      font-size: 1.65rem;
+    }
+    .emoji { display: inline-block; font-family: var(--emoji); line-height: 1; font-weight: 400; }
+    .mirror { transform: scaleX(-1); }
+    .player-meta { flex: 1; min-width: 0; }
+    h3 { font-size: .93rem; line-height: 1.15; }
+    .alias {
+      display: block;
+      max-width: 100%;
+      margin-top: 5px;
+      overflow: hidden;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      font-size: .72rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .score { min-width: 34px; text-align: center; }
+    .score strong { display: block; color: var(--player-accent); font-size: 1.12rem; line-height: 1.18; }
+    .score small { color: var(--muted); font-size: .69rem; }
+    .player-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 11px; }
+    .player-actions .button { min-width: 0; min-height: 35px; gap: 6px; padding: 6px; }
+    .color-dot { width: 10px; height: 10px; flex: 0 0 auto; border-radius: 50%; background: var(--tint); }
+    .matchups { padding: 16px; }
+    .matchups h2 { margin-bottom: 11px; }
+    .preset-list { display: grid; gap: 7px; }
+    .preset {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 41px;
+      padding: 7px 10px;
+      border: 1px solid #3a334a;
+      border-radius: 8px;
+      background: #211d2b;
+      text-align: left;
+      font-size: .85rem;
+    }
+    .preset:hover { background: #302840; }
+    .preset[aria-pressed="true"] { border-color: #9275bb; background: #2c233a; }
+    .preset-icons { display: inline-flex; gap: 6px; font-size: 1.08rem; }
+    .preset .icon { margin-left: auto; color: var(--lilac); visibility: hidden; }
+    .preset[aria-pressed="true"] .icon { visibility: visible; }
+    dialog {
+      width: min(490px, calc(100% - 30px));
+      max-height: min(720px, calc(100% - 30px));
+      padding: 20px;
+      border: 1px solid #504363;
+      border-radius: 17px;
+      background: #201a2b;
+      color: var(--text);
+      box-shadow: 0 20px 70px #0009;
+    }
+    dialog::backdrop { background: #100d19bb; }
+    .dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; margin-bottom: 15px; }
+    .dialog-head h2 { font-size: 1.35rem; }
+    .close { width: 35px; min-height: 35px; padding: 0; }
+    .search-label { display: block; font-size: .88rem; color: var(--muted); margin-bottom: 6px; }
+    #emoji-search {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 11px;
+      border: 1px solid #5d4d73;
+      border-radius: 8px;
+      background: #16121e;
+      color: var(--text);
+    }
+    .emoji-categories { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .emoji-categories .button { min-height: 33px; padding: 5px 9px; }
+    .emoji-categories .button[aria-pressed="true"] { background: #3c2f50; border-color: var(--lilac); }
+    .emoji-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+      gap: 7px;
+      max-height: min(300px, 42dvh);
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 4px;
+      margin: 8px -4px 4px;
+    }
+    .emoji-list:empty { display: none; }
+    .emoji-option {
+      display: grid;
+      place-items: center;
+      aspect-ratio: 1;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #2c243a;
+      font-size: 1.75rem;
+    }
+    .emoji-option:hover { border-color: var(--lilac); }
+    .emoji-option[aria-pressed="true"] { border-color: var(--lime); }
+    .custom-emoji { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .custom-emoji p { flex: 1 1 200px; color: var(--muted); font-size: .875rem; }
+    .background-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); gap: 8px; }
+    .background-option {
+      display: grid;
+      gap: 7px;
+      padding: 6px 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #211e2c;
+      text-align: center;
+      font-size: .875rem;
+      font-weight: 650;
+    }
+    .background-option:hover { background: #343047; }
+    .background-option[aria-pressed="true"] { border-color: var(--lilac); }
+    .background-swatch {
+      display: grid;
+      place-items: center;
+      height: 48px;
+      border: 1px solid var(--tint);
+      border-radius: 5px;
+      background: var(--soft);
+      font-size: 1.5rem;
+    }
+    .rules { display: grid; gap: 9px; padding-left: 22px; margin: 0; color: var(--muted); line-height: 1.5; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    @media (max-width: 850px) {
+      main { width: min(730px, calc(100% - 32px)); padding-top: 26px; }
+      .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .sidebar { grid-template-columns: 1.15fr 1fr; align-items: start; }
+      .intro { margin-bottom: 18px; }
+    }
+    @media (max-width: 580px) {
+      .topbar { min-height: 60px; padding: 0 14px; }
+      main { width: calc(100% - 20px); padding-top: 21px; }
+      .intro { margin-inline: 4px; }
+      .intro p { font-size: .89rem; }
+      .board-panel { padding: 9px 7px 10px; border-radius: 13px; }
+      .board-header { margin: 0 2px 6px; gap: 5px; }
+      .status { gap: 6px; }
+      .status-emoji { width: 32px; height: 34px; }
+      .status strong { font-size: .83rem; }
+      .status small { font-size: .69rem; }
+      .board-actions { gap: 4px; }
+      .board-actions .button { min-height: 35px; padding: 5px 7px; font-size: .76rem; }
+      .coordinates { grid-template-columns: 17px minmax(0, 1fr); grid-template-rows: 17px auto; }
+      .columns, .rows { font-size: .59rem; }
+      .board-footer { margin-left: 17px; }
+      .sidebar { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 370px) {
+      .board-actions .undo-text { display: none; }
+      .board-actions .button { min-width: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M8 3v18m8-18v18M3 8h18M3 16h18"/><path d="m10.5 10.5 3 3m0-3-3 3"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.8 2.8 0 0 1 5.4 1.1c0 1.8-2.7 2.3-2.7 4M12 17h.01"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a5 5 0 0 1 0 10h-2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="m14 6 4 4m-12 8 4-.9L19 8a2.8 2.8 0 0 0-4-4l-9 9-.9 4.9Z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span>Piškvorky</div>
+    <button type="button" class="button" id="show-rules"><svg class="icon" aria-hidden="true"><use href="#i-help"/></svg>How to play</button>
+  </header>
+
+  <main>
+    <div class="intro">
+      <h1>Piškvorky</h1>
+      <p>Pick your emojis. Get five in a row.</p>
+    </div>
+    <div class="layout">
+      <section class="panel board-panel" aria-label="Game">
+        <div class="board-header">
+          <div class="status" id="status" data-piece-color="lime">
+            <div class="status-emoji" id="status-emoji" aria-hidden="true"></div>
+            <div role="status" aria-live="polite">
+              <strong id="status-text"></strong>
+              <small id="status-caption"></small>
+            </div>
+          </div>
+          <div class="board-actions">
+            <button type="button" class="button" id="undo" aria-label="Undo last move" title="Undo last move"><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg><span class="undo-text">Undo</span></button>
+            <button type="button" class="button primary" id="new-round"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>New round</button>
+          </div>
+        </div>
+        <div class="coordinates">
+          <div class="columns" id="columns" aria-hidden="true"></div>
+          <div class="rows" id="rows" aria-hidden="true"></div>
+          <div class="board" role="grid" aria-label="Piškvorky board" aria-describedby="grid-help" id="board" data-piece-color="lime"></div>
+        </div>
+        <p class="sr-only" id="grid-help">Use the arrow keys to move between squares. Press Enter or Space to play.</p>
+        <div class="board-footer"><span>15 × 15 board</span><span id="move-count">0 moves</span></div>
+      </section>
+
+      <aside class="sidebar" aria-label="Players and emoji choices">
+        <section class="panel players" aria-labelledby="players-title">
+          <h2 id="players-title">Players</h2>
+          <p class="section-note">Two players on this device.</p>
+          <article class="player" data-piece-color="lime" data-player="0">
+            <div class="player-head">
+              <span class="player-piece" aria-hidden="true"></span>
+              <div class="player-meta"><h3>Player 1</h3><span class="alias"></span></div>
+              <div class="score"><strong>0</strong><small>wins</small></div>
+            </div>
+            <div class="player-actions">
+              <button type="button" class="button change-piece" aria-label="Change Player 1 emoji"><svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Emoji</button>
+              <button type="button" class="button change-background" aria-label="Change Player 1 emoji background"><span class="color-dot" aria-hidden="true"></span>Background</button>
+            </div>
+          </article>
+          <article class="player" data-piece-color="purple" data-player="1">
+            <div class="player-head">
+              <span class="player-piece" aria-hidden="true"></span>
+              <div class="player-meta"><h3>Player 2</h3><span class="alias"></span></div>
+              <div class="score"><strong>0</strong><small>wins</small></div>
+            </div>
+            <div class="player-actions">
+              <button type="button" class="button change-piece" aria-label="Change Player 2 emoji"><svg class="icon" aria-hidden="true"><use href="#i-edit"/></svg>Emoji</button>
+              <button type="button" class="button change-background" aria-label="Change Player 2 emoji background"><span class="color-dot" aria-hidden="true"></span>Background</button>
+            </div>
+          </article>
+        </section>
+        <section class="panel matchups" aria-labelledby="matchups-title">
+          <h2 id="matchups-title">Quick matchups</h2>
+          <div class="preset-list" id="presets"></div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="picker" aria-labelledby="picker-title">
+    <div class="dialog-head">
+      <div><h2 id="picker-title">Choose an emoji</h2><p class="section-note" id="picker-player"></p></div>
+      <button type="button" class="button close" aria-label="Close emoji picker"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+    <label class="search-label" for="emoji-search">Search by name or paste an emoji</label>
+    <input id="emoji-search" type="text" placeholder="e.g. :eyes_back: or 🐸" maxlength="64" autocomplete="off" spellcheck="false">
+    <div class="emoji-categories" id="emoji-categories" role="group" aria-label="Emoji categories"></div>
+    <div class="emoji-list" id="emoji-list" role="group" aria-label="Emoji choices"></div>
+    <div class="custom-emoji">
+      <p role="status" id="picker-feedback"></p>
+      <button type="button" class="button primary" id="use-custom" hidden>Use emoji</button>
+    </div>
+  </dialog>
+
+  <dialog id="background-picker" aria-labelledby="background-title" aria-describedby="background-player">
+    <div class="dialog-head">
+      <div><h2 id="background-title">Emoji background</h2><p class="section-note" id="background-player"></p></div>
+      <button type="button" class="button close" aria-label="Close background picker"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="background-options" id="background-options"></div>
+  </dialog>
+
+  <dialog id="rules" aria-labelledby="rules-title">
+    <div class="dialog-head">
+      <h2 id="rules-title">How to play</h2>
+      <button type="button" class="button close" aria-label="Close rules"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </div>
+    <ol class="rules">
+      <li>Choose an emoji and a background color for each player. Take turns playing on the same device.</li>
+      <li>On your turn, select any empty square to place your emoji.</li>
+      <li>Get five or more of your pieces in an unbroken horizontal, vertical, or diagonal line to win. A full board with no winning line is a draw.</li>
+      <li>Use Undo to take back the last move, or New round to clear the board and keep the score.</li>
+    </ol>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const size = 15;
+    const storageKey = "emoji-piskvorky-v1";
+    const pieceColors = new Map([
+      ["lime", "Lime"], ["purple", "Purple"], ["blue", "Blue"], ["teal", "Teal"],
+      ["amber", "Amber"], ["rose", "Rose"], ["red", "Red"], ["slate", "Slate"]
+    ]);
+    const categories = new Map([
+      ["Faces", [
+        ["eyes", "👀"], ["eyes_back", "👀"], ["imp", "👿"], ["smiling_imp", "😈"],
+        ["ghost", "👻"], ["skull", "💀"], ["alien", "👽"], ["robot", "🤖"],
+        ["grinning", "😀"], ["smile", "😄"], ["laughing", "😆"], ["joy", "😂"],
+        ["upside_down_face", "🙃"], ["wink", "😉"], ["blush", "😊"], ["innocent", "😇"],
+        ["heart_eyes", "😍"], ["star_struck", "🤩"], ["kissing_heart", "😘"], ["yum", "😋"],
+        ["zany_face", "🤪"], ["stuck_out_tongue", "😛"], ["sunglasses", "😎"], ["nerd_face", "🤓"],
+        ["cowboy_hat_face", "🤠"], ["partying_face", "🥳"], ["thinking_face", "🤔"], ["shushing_face", "🤫"],
+        ["face_with_peeking_eye", "🫣"], ["rolling_eyes", "🙄"], ["scream", "😱"], ["exploding_head", "🤯"],
+        ["sob", "😭"], ["rage", "😡"], ["sleeping", "😴"], ["melting_face", "🫠"],
+        ["clown_face", "🤡"], ["poop", "💩"], ["jack_o_lantern", "🎃"], ["see_no_evil", "🙈"],
+        ["hear_no_evil", "🙉"], ["speak_no_evil", "🙊"], ["smiley_cat", "😺"], ["heart_eyes_cat", "😻"]
+      ]],
+      ["Animals", [
+        ["frog", "🐸"], ["fox_face", "🦊"], ["cat", "🐱"], ["dog", "🐶"],
+        ["unicorn", "🦄"], ["octopus", "🐙"], ["butterfly", "🦋"], ["lion", "🦁"],
+        ["tiger", "🐯"], ["wolf", "🐺"], ["bear", "🐻"], ["panda_face", "🐼"],
+        ["koala", "🐨"], ["raccoon", "🦝"], ["rabbit", "🐰"], ["mouse", "🐭"],
+        ["hamster", "🐹"], ["hedgehog", "🦔"], ["bat", "🦇"], ["horse", "🐴"],
+        ["cow", "🐮"], ["pig", "🐷"], ["goat", "🐐"], ["sheep", "🐑"],
+        ["llama", "🦙"], ["giraffe", "🦒"], ["elephant", "🐘"], ["rhino", "🦏"],
+        ["gorilla", "🦍"], ["sloth", "🦥"], ["otter", "🦦"], ["beaver", "🦫"],
+        ["chicken", "🐔"], ["duck", "🦆"], ["owl", "🦉"], ["penguin", "🐧"],
+        ["eagle", "🦅"], ["flamingo", "🦩"], ["parrot", "🦜"], ["turtle", "🐢"],
+        ["snake", "🐍"], ["crocodile", "🐊"], ["dragon", "🐲"], ["t_rex", "🦖"],
+        ["sauropod", "🦕"], ["shark", "🦈"], ["dolphin", "🐬"], ["whale", "🐳"],
+        ["fish", "🐟"], ["jellyfish", "🪼"], ["crab", "🦀"], ["lobster", "🦞"],
+        ["snail", "🐌"], ["bee", "🐝"], ["lady_beetle", "🐞"], ["spider", "🕷️"]
+      ]],
+      ["Food", [
+        ["cherries", "🍒"], ["lemon", "🍋"], ["pizza", "🍕"], ["taco", "🌮"],
+        ["apple", "🍎"], ["green_apple", "🍏"], ["strawberry", "🍓"], ["blueberries", "🫐"],
+        ["peach", "🍑"], ["banana", "🍌"], ["watermelon", "🍉"], ["grapes", "🍇"],
+        ["pineapple", "🍍"], ["mango", "🥭"], ["coconut", "🥥"], ["kiwi_fruit", "🥝"],
+        ["avocado", "🥑"], ["carrot", "🥕"], ["broccoli", "🥦"], ["corn", "🌽"],
+        ["hot_pepper", "🌶️"], ["garlic", "🧄"], ["croissant", "🥐"], ["pretzel", "🥨"],
+        ["cheese", "🧀"], ["egg", "🥚"], ["hamburger", "🍔"], ["fries", "🍟"],
+        ["hotdog", "🌭"], ["burrito", "🌯"], ["sushi", "🍣"], ["ramen", "🍜"],
+        ["dumpling", "🥟"], ["spaghetti", "🍝"], ["popcorn", "🍿"], ["doughnut", "🍩"],
+        ["cookie", "🍪"], ["cupcake", "🧁"], ["birthday_cake", "🎂"], ["ice_cream", "🍦"],
+        ["chocolate_bar", "🍫"], ["candy", "🍬"], ["coffee", "☕"], ["bubble_tea", "🧋"]
+      ]],
+      ["Nature", [
+        ["sunny", "☀️"], ["crescent_moon", "🌙"], ["fire", "🔥"], ["snowflake", "❄️"],
+        ["star", "⭐"], ["rainbow", "🌈"], ["zap", "⚡"], ["mushroom", "🍄"],
+        ["full_moon", "🌕"], ["new_moon_with_face", "🌚"], ["sun_with_face", "🌞"], ["sparkles", "✨"],
+        ["comet", "☄️"], ["ringed_planet", "🪐"], ["milky_way", "🌌"], ["earth", "🌍"],
+        ["cloud", "☁️"], ["tornado", "🌪️"], ["droplet", "💧"], ["ocean", "🌊"],
+        ["snowman", "⛄"], ["volcano", "🌋"], ["mountain", "⛰️"], ["desert_island", "🏝️"],
+        ["sunflower", "🌻"], ["rose", "🌹"], ["tulip", "🌷"], ["cherry_blossom", "🌸"],
+        ["cactus", "🌵"], ["palm_tree", "🌴"], ["evergreen_tree", "🌲"], ["seedling", "🌱"],
+        ["four_leaf_clover", "🍀"], ["maple_leaf", "🍁"], ["fallen_leaf", "🍂"], ["herb", "🌿"]
+      ]],
+      ["Things", [
+        ["rocket", "🚀"], ["flying_saucer", "🛸"], ["airplane", "✈️"], ["helicopter", "🚁"],
+        ["race_car", "🏎️"], ["fire_engine", "🚒"], ["tractor", "🚜"], ["steam_locomotive", "🚂"],
+        ["bike", "🚲"], ["sailboat", "⛵"], ["anchor", "⚓"], ["compass", "🧭"],
+        ["diamond", "💎"], ["crown", "👑"], ["tophat", "🎩"], ["gift", "🎁"],
+        ["balloon", "🎈"], ["tada", "🎉"], ["disco_ball", "🪩"], ["magic_wand", "🪄"],
+        ["crystal_ball", "🔮"], ["teddy_bear", "🧸"], ["book", "📖"], ["camera", "📷"],
+        ["headphones", "🎧"], ["microphone", "🎤"], ["guitar", "🎸"], ["saxophone", "🎷"],
+        ["trumpet", "🎺"], ["drum", "🥁"], ["art", "🎨"], ["light_bulb", "💡"],
+        ["key", "🔑"], ["magnet", "🧲"], ["hourglass", "⌛"], ["toolbox", "🧰"],
+        ["castle", "🏰"], ["moyai", "🗿"], ["mirror", "🪞"], ["lantern", "🏮"]
+      ]],
+      ["Games", [
+        ["soccer", "⚽"], ["basketball", "🏀"], ["football", "🏈"], ["baseball", "⚾"],
+        ["tennis", "🎾"], ["volleyball", "🏐"], ["rugby_football", "🏉"], ["golf", "⛳"],
+        ["ice_hockey", "🏒"], ["ping_pong", "🏓"], ["badminton", "🏸"], ["bowling", "🎳"],
+        ["dart", "🎯"], ["eight_ball", "🎱"], ["game_die", "🎲"], ["chess_pawn", "♟️"],
+        ["video_game", "🎮"], ["joystick", "🕹️"], ["puzzle_piece", "🧩"], ["kite", "🪁"],
+        ["skateboard", "🛹"], ["skis", "🎿"], ["sled", "🛷"], ["ice_skate", "⛸️"],
+        ["trophy", "🏆"], ["first_place_medal", "🥇"], ["second_place_medal", "🥈"], ["third_place_medal", "🥉"]
+      ]],
+      ["Symbols", [
+        ["heart", "❤️"], ["blue_heart", "💙"], ["x", "❌"], ["o", "⭕"],
+        ["orange_heart", "🧡"], ["yellow_heart", "💛"], ["green_heart", "💚"], ["purple_heart", "💜"],
+        ["black_heart", "🖤"], ["white_heart", "🤍"], ["brown_heart", "🤎"], ["pink_heart", "🩷"],
+        ["broken_heart", "💔"], ["heart_on_fire", "❤️‍🔥"], ["two_hearts", "💕"], ["sparkling_heart", "💖"],
+        ["white_check_mark", "✅"], ["question", "❓"], ["exclamation", "❗"], ["infinity", "♾️"],
+        ["peace_symbol", "☮️"], ["yin_yang", "☯️"], ["recycle", "♻️"], ["musical_note", "🎵"],
+        ["notes", "🎶"], ["paw_prints", "🐾"], ["diamond_suit", "♦️"], ["spade_suit", "♠️"],
+        ["club_suit", "♣️"], ["heart_suit", "♥️"], ["black_circle", "⚫"], ["white_circle", "⚪"],
+        ["orange_circle", "🟠"], ["purple_circle", "🟣"], ["blue_square", "🟦"], ["green_square", "🟩"]
+      ]],
+      ["Flags", [
+        ["flag_czechia", "🇨🇿"], ["flag_slovakia", "🇸🇰"], ["flag_poland", "🇵🇱"], ["flag_germany", "🇩🇪"],
+        ["flag_ukraine", "🇺🇦"], ["flag_austria", "🇦🇹"], ["flag_european_union", "🇪🇺"], ["flag_united_kingdom", "🇬🇧"],
+        ["flag_france", "🇫🇷"], ["flag_italy", "🇮🇹"], ["flag_spain", "🇪🇸"], ["flag_sweden", "🇸🇪"],
+        ["flag_united_states", "🇺🇸"], ["flag_canada", "🇨🇦"], ["flag_brazil", "🇧🇷"], ["flag_mexico", "🇲🇽"],
+        ["flag_japan", "🇯🇵"], ["flag_south_korea", "🇰🇷"], ["flag_india", "🇮🇳"], ["flag_australia", "🇦🇺"],
+        ["rainbow_flag", "🏳️‍🌈"], ["transgender_flag", "🏳️‍⚧️"], ["pirate_flag", "🏴‍☠️"], ["checkered_flag", "🏁"]
+      ]]
+    ]);
+    const pieces = new Map(Array.from(categories.values()).flat());
+    const matchups = [
+      { name: "Side-eye", keys: ["eyes", "eyes_back"] },
+      { name: "Little devils", keys: ["imp", "smiling_imp"] },
+      { name: "Sun & moon", keys: ["sunny", "crescent_moon"] }
+    ];
+    const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+    const columns = "ABCDEFGHIJKLMNO";
+    const byId = (id) => document.getElementById(id);
+    const emojiCharacter = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u;
+    const graphemes = typeof Intl.Segmenter === "function" ? new Intl.Segmenter() : null;
+
+    function isEmoji(value) {
+      return typeof value === "string" && value.length <= 64 &&
+        emojiCharacter.test(value) &&
+        (graphemes ? Array.from(graphemes.segment(value)).length === 1 : /^\S+$/u.test(value));
+    }
+
+    function pieceIdentity(key) {
+      if (key === "eyes_back") return key;
+      return (pieces.get(key) ?? key).replaceAll(/[\uFE0E\uFE0F]/g, "");
+    }
+
+    function loadGame() {
+      const initial = { chosen: [...matchups[0].keys], moves: [], scores: [0, 0], colors: ["lime", "purple"] };
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey));
+        if (!saved) return initial;
+        if (Array.isArray(saved.chosen) && saved.chosen.length === 2 &&
+            saved.chosen.every((key) => pieces.has(key) || isEmoji(key)) &&
+            pieceIdentity(saved.chosen[0]) !== pieceIdentity(saved.chosen[1])) {
+          initial.chosen = saved.chosen;
+        }
+        if (Array.isArray(saved.moves) && new Set(saved.moves).size === saved.moves.length &&
+            saved.moves.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < size * size)) {
+          initial.moves = saved.moves;
+        }
+        if (Array.isArray(saved.scores) && saved.scores.length === 2 &&
+            saved.scores.every((score) => Number.isSafeInteger(score) && score >= 0)) {
+          initial.scores = saved.scores;
+        }
+        if (Array.isArray(saved.colors)) {
+          initial.colors = initial.colors.map((color, player) =>
+            pieceColors.has(saved.colors[player]) ? saved.colors[player] : color);
+        }
+      } catch {
+        // The game remains available if browser storage is blocked or corrupted.
+      }
+      return initial;
+    }
+
+    function saveGame() {
+      try { localStorage.setItem(storageKey, JSON.stringify(game)); } catch {}
+    }
+
+    function emoji(key) {
+      const mark = document.createElement("span");
+      mark.className = key === "eyes_back" ? "emoji mirror" : "emoji";
+      mark.textContent = pieces.get(key) ?? key;
+      return mark;
+    }
+
+    function displayName(key) {
+      return pieces.has(key) ? ":" + key + ":" : key;
+    }
+
+    function emojiQuery(input) {
+      return input.trim().toLowerCase().replace(/^:|:$/g, "").replaceAll(/[-\s]+/g, "_");
+    }
+
+    function winningLine(positions, index) {
+      if (index === undefined) return [];
+      const row = Math.floor(index / size);
+      const col = index % size;
+      const player = positions[index];
+      const line = new Set();
+      for (const [dy, dx] of directions) {
+        const run = [index];
+        for (const sign of [-1, 1]) {
+          let y = row + dy * sign;
+          let x = col + dx * sign;
+          while (y >= 0 && y < size && x >= 0 && x < size && positions[y * size + x] === player) {
+            run.push(y * size + x);
+            y += dy * sign;
+            x += dx * sign;
+          }
+        }
+        if (run.length >= 5) run.forEach((cell) => line.add(cell));
+      }
+      return [...line];
+    }
+
+    const game = loadGame();
+    const board = byId("board");
+    const picker = byId("picker");
+    const backgroundPicker = byId("background-picker");
+    const backgroundOptions = byId("background-options");
+    const search = byId("emoji-search");
+    const useCustom = byId("use-custom");
+    const categoryBar = byId("emoji-categories");
+    const playerCards = Array.from(document.querySelectorAll("[data-player]"));
+    const cells = [];
+    let positions;
+    let winning;
+    let next = 0;
+    let activeCell = Math.floor(size * size / 2);
+    let choosing = 0;
+    let customChoice = null;
+    let activeCategory = "All";
+
+    function setActiveCell(index, focus = false) {
+      cells[activeCell].tabIndex = -1;
+      activeCell = index;
+      cells[activeCell].tabIndex = 0;
+      if (focus) cells[activeCell].focus();
+    }
+
+    function play(index) {
+      if (positions[index] !== -1 || winning.length) return;
+      game.moves.push(index);
+      updateGame();
+    }
+
+    function buildBoard() {
+      for (let row = 0; row < size; row++) {
+        const number = document.createElement("span");
+        number.textContent = row + 1;
+        byId("rows").append(number);
+        const letter = document.createElement("span");
+        letter.textContent = columns[row];
+        byId("columns").append(letter);
+        const boardRow = document.createElement("div");
+        boardRow.className = "board-row";
+        boardRow.setAttribute("role", "row");
+        for (let col = 0; col < size; col++) {
+          const index = row * size + col;
+          const cell = document.createElement("div");
+          cell.setAttribute("role", "gridcell");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "cell";
+          button.tabIndex = -1;
+          button.style.width = "100%";
+          button.style.height = "100%";
+          if (row === 7 && col === 7 || [3, 11].includes(row) && [3, 11].includes(col)) {
+            button.dataset.star = "";
+          }
+          button.addEventListener("focus", () => setActiveCell(index));
+          button.addEventListener("click", () => play(index));
+          button.addEventListener("keydown", (event) => {
+            const step = {
+              ArrowUp: [Math.max(row - 1, 0), col],
+              ArrowDown: [Math.min(row + 1, size - 1), col],
+              ArrowLeft: [row, Math.max(col - 1, 0)],
+              ArrowRight: [row, Math.min(col + 1, size - 1)],
+              Home: [row, 0],
+              End: [row, size - 1]
+            }[event.key];
+            if (!step) return;
+            event.preventDefault();
+            setActiveCell(step[0] * size + step[1], true);
+          });
+          cell.append(button);
+          boardRow.append(cell);
+          cells.push(button);
+        }
+        board.append(boardRow);
+      }
+      setActiveCell(activeCell);
+    }
+
+    function buildPresets() {
+      for (const preset of matchups) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "preset";
+        const icons = document.createElement("span");
+        icons.className = "preset-icons";
+        icons.setAttribute("aria-hidden", "true");
+        icons.append(...preset.keys.map(emoji));
+        button.append(icons, document.createTextNode(preset.name));
+        button.insertAdjacentHTML("beforeend", '<svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>');
+        button.addEventListener("click", () => {
+          game.chosen = [...preset.keys];
+          updateGame();
+        });
+        byId("presets").append(button);
+      }
+    }
+
+    function render() {
+      positions = Array(size * size).fill(-1);
+      game.moves.forEach((index, turn) => { positions[index] = turn % 2; });
+      const last = game.moves.at(-1);
+      winning = winningLine(positions, last);
+      const winner = winning.length ? positions[last] : -1;
+      const draw = game.moves.length === size * size && winner === -1;
+      const finished = winner !== -1 || draw;
+      next = game.moves.length % 2;
+      board.dataset.pieceColor = game.colors[next];
+      const status = byId("status");
+      const statusPlayer = winner !== -1 ? winner : next;
+      status.dataset.pieceColor = draw ? "neutral" : game.colors[statusPlayer];
+      byId("status-emoji").replaceChildren(emoji(draw ? "🤝" : game.chosen[statusPlayer]));
+      byId("status-text").textContent = draw ? "It’s a draw!" : winner !== -1 ? "Player " + (winner + 1) + " wins!" : "Player " + (next + 1) + " to move";
+      byId("status-caption").textContent = finished ? "Start a new round to play again." : "Choose an empty square";
+      byId("move-count").textContent = game.moves.length + (game.moves.length === 1 ? " move" : " moves");
+      byId("undo").disabled = game.moves.length === 0;
+
+      cells.forEach((cell, index) => {
+        const owner = positions[index];
+        const taken = owner !== -1;
+        const mark = emoji(game.chosen[taken ? owner : next]);
+        if (!taken) mark.classList.add("ghost");
+        mark.setAttribute("aria-hidden", "true");
+        cell.replaceChildren(mark);
+        cell.setAttribute("aria-disabled", String(taken || finished));
+        const coordinate = columns[index % size] + (Math.floor(index / size) + 1);
+        const won = winning.includes(index);
+        cell.setAttribute("aria-label", coordinate + (taken ? ", Player " + (owner + 1) +
+          " " + displayName(game.chosen[owner]) + (won ? ", winning piece" : "") : ", empty"));
+        cell.toggleAttribute("data-last", index === last);
+        cell.toggleAttribute("data-winning", won);
+        if (taken) {
+          cell.dataset.owner = owner;
+          cell.dataset.pieceColor = game.colors[owner];
+        } else {
+          delete cell.dataset.owner;
+          delete cell.dataset.pieceColor;
+        }
+      });
+
+      playerCards.forEach((card, index) => {
+        card.toggleAttribute("data-active", !finished && next === index || winner === index);
+        card.dataset.pieceColor = game.colors[index];
+        card.querySelector(".player-piece").replaceChildren(emoji(game.chosen[index]));
+        const alias = card.querySelector(".alias");
+        alias.textContent = alias.title = displayName(game.chosen[index]);
+        const count = game.scores[index] + Number(winner === index);
+        card.querySelector(".score strong").textContent = count;
+        card.querySelector(".score small").textContent = count === 1 ? "win" : "wins";
+      });
+
+      Array.from(byId("presets").children).forEach((button, index) => {
+        button.setAttribute("aria-pressed", String(matchups[index].keys.every((key, player) => key === game.chosen[player])));
+      });
+    }
+
+    function updateGame() {
+      render();
+      saveGame();
+    }
+
+    function buildBackgroundOptions() {
+      for (const [color, label] of pieceColors) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "background-option";
+        button.dataset.pieceColor = color;
+        const swatch = document.createElement("span");
+        swatch.className = "background-swatch";
+        swatch.setAttribute("aria-hidden", "true");
+        button.append(swatch, label);
+        button.addEventListener("click", () => {
+          game.colors[choosing] = color;
+          backgroundPicker.close();
+          updateGame();
+        });
+        backgroundOptions.append(button);
+      }
+    }
+
+    function selectPiece(key) {
+      if (pieceIdentity(game.chosen[1 - choosing]) === pieceIdentity(key)) {
+        byId("picker-feedback").textContent = "That emoji is already in use.";
+        return;
+      }
+      game.chosen[choosing] = key;
+      picker.close();
+      updateGame();
+    }
+
+    function buildCategories() {
+      for (const name of ["All", ...categories.keys()]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "button";
+        button.textContent = name;
+        button.setAttribute("aria-controls", "emoji-list");
+        button.addEventListener("click", () => {
+          activeCategory = name;
+          search.value = "";
+          renderPicker();
+        });
+        categoryBar.append(button);
+      }
+    }
+
+    function renderPicker() {
+      const input = search.value.trim();
+      const query = emojiQuery(input);
+      const feedback = byId("picker-feedback");
+      const list = byId("emoji-list");
+      const other = pieceIdentity(game.chosen[1 - choosing]);
+      const current = pieceIdentity(game.chosen[choosing]);
+      const inputIsEmoji = isEmoji(input);
+      const inputIdentity = inputIsEmoji ? pieceIdentity(input) : null;
+      const options = input ? pieces : categories.get(activeCategory) ?? pieces;
+      customChoice = null;
+      for (const button of categoryBar.children) {
+        button.setAttribute("aria-pressed", String(button.textContent === activeCategory));
+      }
+      const results = document.createDocumentFragment();
+      for (const [key, glyph] of options) {
+        if (query && !key.includes(query) && pieceIdentity(glyph) !== inputIdentity) continue;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "emoji-option";
+        button.title = button.ariaLabel = displayName(key);
+        const identity = pieceIdentity(key);
+        button.setAttribute("aria-pressed", String(identity === current));
+        if (identity === other) {
+          button.disabled = true;
+          button.title += " · used by the other player";
+        }
+        button.append(emoji(key));
+        button.addEventListener("click", () => selectPiece(key));
+        results.append(button);
+      }
+      list.replaceChildren(results);
+      list.scrollTop = 0;
+      feedback.textContent = "";
+      if (inputIsEmoji) {
+        const known = [...pieces.keys()].find((key) => pieceIdentity(key) === inputIdentity);
+        const key = known ?? input;
+        if (inputIdentity === other) {
+          feedback.textContent = "That emoji is already in use.";
+        } else {
+          customChoice = key;
+        }
+      } else if (query && !list.childElementCount) {
+        feedback.textContent = "No matches. Try another name or paste a single emoji.";
+      }
+      useCustom.hidden = customChoice === null;
+    }
+
+    buildBoard();
+    buildPresets();
+    buildCategories();
+    buildBackgroundOptions();
+    render();
+
+    playerCards.forEach((card, index) => {
+      card.querySelector(".change-piece").addEventListener("click", () => {
+        choosing = index;
+        activeCategory = "All";
+        search.value = "";
+        byId("picker-player").textContent = "Player " + (index + 1);
+        renderPicker();
+        picker.showModal();
+        search.focus();
+      });
+      card.querySelector(".change-background").addEventListener("click", () => {
+        choosing = index;
+        byId("background-player").textContent = "Player " + (index + 1);
+        for (const button of backgroundOptions.children) {
+          button.setAttribute("aria-pressed", String(button.dataset.pieceColor === game.colors[index]));
+          button.querySelector(".background-swatch").replaceChildren(emoji(game.chosen[index]));
+        }
+        backgroundPicker.showModal();
+      });
+    });
+
+    search.addEventListener("input", () => {
+      activeCategory = "All";
+      renderPicker();
+    });
+    search.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return;
+      event.preventDefault();
+      const key = customChoice ?? emojiQuery(search.value);
+      if (customChoice !== null || pieces.has(key)) selectPiece(key);
+    });
+    useCustom.addEventListener("click", () => {
+      if (customChoice !== null) selectPiece(customChoice);
+    });
+    byId("undo").addEventListener("click", () => {
+      if (!game.moves.length) return;
+      const undone = game.moves.pop();
+      updateGame();
+      setActiveCell(undone, byId("undo").disabled);
+    });
+    byId("new-round").addEventListener("click", () => {
+      if (winning.length) game.scores[positions[game.moves.at(-1)]]++;
+      game.moves = [];
+      setActiveCell(Math.floor(size * size / 2));
+      updateGame();
+    });
+    byId("show-rules").addEventListener("click", () => byId("rules").showModal());
+    document.querySelectorAll("dialog").forEach((dialog) => {
+      dialog.querySelector(".close").addEventListener("click", () => dialog.close());
+    });
+  </script>
+</body>
+</html>
